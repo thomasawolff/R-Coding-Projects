@@ -1,0 +1,520 @@
+---
+title: "Climate Data Course Project"
+output: html_document
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(echo = TRUE)
+library(shiny)
+library(fpp2)
+library(zoo)
+library(tseries)
+```
+
+
+
+
+```{r temp anolmolies video, echo = FALSE}
+# setwd("C:/Users/moose_f8sa3n2/Google Drive/Time Series Forcasting/Course Project/data-society-global-climate-change-data/GlobalLandTemperatures/Newest Data")
+# 
+# shinyApp(
+#   ui <- (
+#     fluidPage(
+#       mainPanel(
+#         uiOutput("tempVideo", height=300)
+#     ))),
+#   
+#   server <- function(input, output, session) {
+#     output$tempVideo <- renderUI({
+#       tags$video(src = "180607_A_004.mp4", type = "video/mp4", 
+#                  width = "610px", height = "350px", controls = "controls", autoplay = "NA")
+#     })
+#   }
+#   
+# )
+
+```
+
+
+
+
+```{r bringing in the data, echo = FALSE}
+
+country_France <- read.csv('https://raw.githubusercontent.com/thomasawolff/verification_text_data/master/GlobalLandTemperaturesFranceAvg.csv')
+country_Canada <- read.csv('https://raw.githubusercontent.com/thomasawolff/verification_text_data/master/GlobalLandTemperaturesCanadaAvg.csv')
+country_Kazakstan <- read.csv('https://raw.githubusercontent.com/thomasawolff/verification_text_data/master/GlobalLandTemperaturesKazakAvg.csv')
+country_NewZealand <- read.csv('https://raw.githubusercontent.com/thomasawolff/verification_text_data/master/GlobalLandTemperaturesNewZealAvg.csv')
+country_Peru <- read.csv('https://raw.githubusercontent.com/thomasawolff/verification_text_data/master/GlobalLandTemperaturesPeruAvg.csv')
+country_SouthAfrica <- read.csv('https://raw.githubusercontent.com/thomasawolff/verification_text_data/master/GlobalLandTemperaturesSouthAfAvg.csv')
+country_SouthKorea <- read.csv('https://raw.githubusercontent.com/thomasawolff/verification_text_data/master/GlobalLandTemperaturesSouthKorAvg.csv')
+
+
+country_France_TS <- ts(country_France, start = 1980, end = 2013, frequency = 12)
+country_Canada_TS <- ts(country_Canada, start = 1980, end = 2013, frequency = 12)
+country_Peru_TS <- ts(country_Peru, start = 1980,end = 2013, frequency = 12)
+country_Kazakstan_TS <- ts(country_Kazakstan, start = 1980, end = 2013, frequency = 12)
+country_SouthAfrica_TS <- ts(country_SouthAfrica, start = 1980, end = 2013, frequency = 12)
+country_SouthKorea_TS <- ts(country_SouthKorea, start = 1980, end = 2013, frequency = 12)
+country_NewZealand_TS <- ts(country_NewZealand, start = 1980, end = 2013, frequency = 12)
+```
+
+
+
+
+```{r setting data variables creating ts data, echo=FALSE}
+country_France_TS <- country_France_TS[,2]
+country_Canada_TS <- country_Canada_TS[,2]
+country_Kazakstan_TS <- country_Kazakstan_TS[,2]
+country_Peru_TS <- country_Peru_TS[,2]
+country_SouthAfrica_TS <- country_SouthAfrica_TS[,2]
+country_SouthKorea_TS <- country_SouthKorea_TS[,2]
+country_NewZealand_TS <- country_NewZealand_TS[,2]
+```
+
+
+
+
+```{r nations data set, echo = FALSE}
+nations <- cbind(country_France_TS,country_Canada_TS,
+                        country_Kazakstan_TS,country_Peru_TS,
+                        country_SouthAfrica_TS,country_SouthKorea_TS,country_NewZealand_TS)
+
+nationList <- c("France Timeseries" = 1,
+                "Canada Timeseries" = 2,
+                "Kazakstan Timeseries" = 3,
+                "Peru Timeseries" = 4,
+                "South Africa Timeseries" = 5,
+                "South Korea Timeseries" = 6,
+                "New Zealand Timeseries" = 7)
+
+```
+
+
+
+
+```{r seasonal plotting, echo = FALSE}
+
+shinyApp(
+     ui = fluidPage(titlePanel("Choose a country to view the timeseries data"),
+       sidebarPanel(
+         inputPanel(
+           selectInput("countries","Choose a country",
+                                         choices = nationList,
+                                         selectize = TRUE))),
+           mainPanel(plotOutput('myPlotTS', height=336))
+         ),
+     server = function(input, output) {
+        output$myPlotTS <- renderPlot({
+          colm <- as.numeric(input$countries)
+          ggseasonplot(nations[,colm])
+         
+        })
+     }
+)
+
+```
+
+
+
+
+```{r boxplot of data, echo = FALSE}
+shinyApp(
+     ui = fluidPage(
+       sidebarPanel(
+         inputPanel(
+           selectInput("countries","Choose a country",
+                                         choices = nationList,
+                                         selectize = TRUE))),
+           mainPanel(plotOutput('myPlotTS', height=400))
+         ),
+     server = function(input, output) {
+        output$myPlotTS <- renderPlot({
+          colm <- as.numeric(input$countries)
+          boxplot(nations[,colm]~cycle(nations[,colm]),
+                  xlab="Months of year", ylab="Temp:Celsius",
+                  col = "green")
+         
+        })
+     }
+)
+```
+
+
+
+
+```{r, HW plotting, echo = FALSE}
+
+shinyApp(
+    ui = fluidPage(
+      sidebarPanel(
+        inputPanel(
+          selectInput("countries","Choose a country",
+                                    choices = nationList, 
+                                    selectize = TRUE),
+          sliderInput("h", label = "Forecast length:",
+              min = 1, max = 97, value = 40, step = 1, animate = TRUE))),
+
+        mainPanel(plotOutput('myPlotTSH', height=287), tableOutput("TableTSH")
+              )
+        ),
+    server = function(input, output) {
+      
+      dataTrain <- reactive({
+          colm <- as.numeric(input$countries)
+          nation.train <- window(nations[,colm], end=c(2004,12))
+        })
+      dataTest <- reactive({
+          colm <- as.numeric(input$countries)
+          nation.test <- window(nations[,colm], start = 2005)
+        })
+      
+       output$myPlotTSH <- renderPlot({
+           damped <- hw(dataTrain(), h = input$h, seasonal = "additive")
+           autoplot(damped, start = 1980, end = 2014, frequency = 12) + 
+             ylab("Temp: Celsius") + 
+             xlab("Years") +
+            autolayer(dataTest())
+       })
+       
+       output$TableTSH <- renderTable({
+          damped <- hw(dataTrain(), h = input$h, seasonal = "additive")
+          acc <- accuracy(damped,dataTest())
+       })
+       
+    }
+ )
+```
+
+
+
+
+```{r plotting forecasts, echo = FALSE}
+
+shinyApp(
+    ui = fluidPage(
+      sidebarPanel(
+        inputPanel(
+          selectInput("countries","Choose a country",
+                                    choices = nationList, 
+                                    selectize = TRUE),
+  
+          sliderInput("h", label = "Forecast length:",
+              min = 1, max = 97, value = 40, step = 1, animate = TRUE))),
+      
+        mainPanel(plotOutput('myPlotTSE', height=287), tableOutput("TableTSE"))
+          ),
+    
+    server = function(input, output) {
+       dataTrain <- reactive({
+          colm <- as.numeric(input$countries)
+          nation.train <- window(nations[,colm], end=c(2004,12))
+        })
+       dataTest <- reactive({
+          colm <- as.numeric(input$countries)
+          nation.test <- window(nations[,colm], start = 2005)
+        })
+      
+       output$myPlotTSE <- renderPlot({
+           damped <- ets(dataTrain(), model = "AAA", damped = TRUE) 
+           autoplot(forecast(damped, h = input$h), 
+                    start = 1980, end = 2014, frequency = 12) + 
+                      ylab("Temp: Celsius") + 
+                      xlab("Years") +
+                      autolayer(dataTest())
+           })
+       
+       output$TableTSE <- renderTable({
+          damped <- ets(dataTrain(), model = "AAA", damped = TRUE) 
+          fore <- forecast(damped, h = input$h)
+          accuracy(fore,dataTest())
+       
+       })
+    }
+ )
+```
+
+
+
+
+```{r, ETS plotting, echo = FALSE}
+shinyApp(
+    ui = fluidPage(titlePanel("Choose a country to view ETS with STL decomposition"),
+      sidebarPanel(
+        inputPanel(
+          selectInput("countries","Choose a country",
+                                    choices = nationList, 
+                                    selectize = TRUE),
+          selectInput("damping","Damping?",
+                                    choices = c("TRUE" = 1,
+                                                "FALSE" = 0), 
+                                    selectize = TRUE)
+          )),
+        mainPanel(plotOutput('myPlotTS', height=318),
+                plotOutput('myPlotSTL', height=318))
+    ),
+    server = function(input, output) {
+       output$myPlotTS <- renderPlot({
+           colm <- as.numeric(input$countries)
+           damp <- as.numeric(input$damping)
+           damped <- ets(nations[,colm], model = "ZZZ", damped = damp)
+           autoplot(damped, start = 1980, end = 2014, frequency = 12) + 
+              ylab("Temp: Celsius") + xlab("Years")
+       })
+    
+      output$myPlotSTL <- renderPlot({
+           colm <- as.numeric(input$countries)
+           nations[,colm] %>% stl(s.window=13,robust=TRUE) %>% autoplot()
+      })
+    }
+ )
+
+    
+```
+
+
+
+
+```{r white noise, echo = FALSE}
+shinyApp(
+    ui = fluidPage(
+      titlePanel("Choose a country to view the differenced timeseries data"),
+      sidebarPanel(
+        inputPanel(
+          selectInput("countries","Choose a country",
+                                    choices = nationList,
+                                    selected = "France",
+                                    selectize = TRUE),
+          selectInput("diff","Differencing:",
+                                    choices = c("None" = 0,1,2),
+                                    selected = 0, 
+                                    selectize = TRUE),
+          selectInput("log","BoxCox Transformation:",
+                                    choices = c("Yes" = 1,"No" = 0),
+                                    selected = 0, 
+                                    selectize = TRUE)
+          )),
+          mainPanel(
+            plotOutput('myPlotTS', height=285),
+            plotOutput('myPlotACF', height=285),
+            plotOutput('myPlotPACF', height=285)
+          )
+    ),
+    server = function(input, output, session) {
+        
+        data <- reactive({
+          colm <- as.numeric(input$countries)
+          if (input$diff == 1 && input$log == 0) {
+            diffed <- nations[,colm] %>% diff(lag=12)}
+          else if (input$diff == 2 && input$log == 0) {
+            diffed <- nations[,colm] %>% diff(lag=12) %>% diff()}
+          else if (input$diff == 0 && input$log == 0) {
+            diffed <- nations[,colm]}
+          else if (input$diff == 0 && input$log == 1) {
+            diffed <- BoxCox(nations[,colm], lambda="auto")}
+          else if (input$diff == 1 && input$log == 1) {
+            diffed <- BoxCox(nations[,colm], lambda="auto") %>% diff(lag=12)}
+          else if (input$diff == 2 && input$log == 1) {
+            diffed <- BoxCox(nations[,colm], lambda="auto") %>% diff(lag=12) %>% diff()}
+        }) 
+        output$myPlotTS <- renderPlot({
+            autoplot(data())
+            })
+        output$myPlotACF <- renderPlot({
+            acf(data())
+            })
+        output$myPlotPACF <- renderPlot({
+            pacf(data())
+            })
+        }
+ )
+
+```
+
+
+
+
+```{r Arima modeling, echo = FALSE}
+shinyApp(
+    ui = fluidPage(
+      titlePanel("Choose a country and parameters to view the Arima model"),
+      verbatimTextOutput('printRec'),
+      sidebarPanel(
+        inputPanel(
+          selectInput("countries","Choose a country",
+                                    choices = nationList,
+                                    selected = "",
+                                    selectize = TRUE),
+          
+          verbatimTextOutput('myPlotTSAIC'),
+          verbatimTextOutput('myPlotTSBIC'),
+          actionButton("Plot","Select to plot data"),
+          actionButton("Reset","Clear the plots"),
+          
+          sliderInput("P", label = "Order p:",
+              min = 0, max = 5, value = 0, step = 1),
+          
+          sliderInput("diff", label = "Order d:",
+              min = 0, max = 2, value = 0, step = 1),
+          
+          sliderInput("Q", label = "Order q:",
+              min = 0, max = 5, value = 0, step = 1),
+          
+          sliderInput("sP", label = "Seasonal P:",
+              min = 0, max = 5, value = 0, step = 1),
+          
+          sliderInput("sDiff", label = "Seasonal D:",
+              min = 0, max = 2, value = 0, step = 1),
+          
+          sliderInput("sQ", label = "Seasonal Q:",
+              min = 0, max = 5, value = 0, step = 1)
+          )),
+          mainPanel(
+            plotOutput('myPlotTS', height=300),
+            plotOutput('mytableRes1', height=300),
+            tableOutput('myPlotTSacc'),
+          )
+    ),
+    server = function(input, output, session) {
+      
+      
+    dataTrain <- reactive({
+          colm <- as.numeric(input$countries)
+          nation.train <- window(nations[,colm], end=c(2004,12))
+        })
+    
+    dataTest <- reactive({
+          colm <- as.numeric(input$countries)
+          nation.test <- window(nations[,colm], start = 2005)
+        })
+      
+      
+    p1 <- eventReactive(input$Plot, {
+            colm <- as.numeric(input$countries)
+            pVal <- as.numeric(input$P)
+            qVal <- as.numeric(input$Q)
+            dVal <- as.numeric(input$diff)
+            spVal <- as.numeric(input$sP)
+            sqVal <- as.numeric(input$sQ)
+            sdVal <- as.numeric(input$sDiff)
+            fore <- forecast(Arima(dataTrain(),
+                               order=c(pVal,dVal,qVal),
+                               seasonal=c(spVal,sdVal,sqVal)),h=110)
+            foreFutre <- forecast(Arima(nations[,colm],
+                               order=c(pVal,dVal,qVal),
+                               seasonal=c(spVal,sdVal,sqVal)),h=60)
+            autoplot(fore) + autolayer(dataTest()) + autolayer(foreFutre)
+        })
+        output$myPlotTS <- renderPlot({p1()})
+        
+        
+    p2 <- eventReactive(input$Plot, {
+            colm <- as.numeric(input$countries)
+            pVal <- as.numeric(input$P)
+            qVal <- as.numeric(input$Q)
+            dVal <- as.numeric(input$diff)
+            spVal <- as.numeric(input$sP)
+            sqVal <- as.numeric(input$sQ)
+            sdVal <- as.numeric(input$sDiff)
+            fore <- forecast(Arima(nations[,colm],
+                                   order=c(pVal,dVal,qVal),
+                                   seasonal=c(spVal,sdVal,sqVal)),h=110)
+            checkresiduals(fore$model, h = 110)
+        })
+        output$mytableRes1 <- renderPlot({p2()})
+        
+        
+    p3 <- eventReactive(input$Plot, {
+            colm <- as.numeric(input$countries)
+            pVal <- as.numeric(input$P)
+            qVal <- as.numeric(input$Q)
+            dVal <- as.numeric(input$diff)
+            spVal <- as.numeric(input$sP)
+            sqVal <- as.numeric(input$sQ)
+            sdVal <- as.numeric(input$sDiff)
+            fore <- forecast(Arima(dataTrain(),
+                                   order=c(pVal,dVal,qVal),
+                                   seasonal=c(spVal,sdVal,sqVal)),h=110)
+            accuracy(fore,dataTest())
+        })
+        output$myPlotTSacc <- renderTable({p3()})
+        
+        
+    p4 <- eventReactive(input$Plot, {
+            colm <- as.numeric(input$countries)
+            pVal <- as.numeric(input$P)
+            qVal <- as.numeric(input$Q)
+            dVal <- as.numeric(input$diff)
+            spVal <- as.numeric(input$sP)
+            sqVal <- as.numeric(input$sQ)
+            sdVal <- as.numeric(input$sDiff)
+            fore <- forecast(Arima(dataTrain(),
+                                   order=c(pVal,dVal,qVal),
+                                   seasonal=c(spVal,sdVal,sqVal)),h=110)
+            print(c('AIC value: ',round(AIC(fore$model),3)))
+        })
+        output$myPlotTSAIC <- renderText({p4()})
+        
+    p5 <- eventReactive(input$Plot, {
+            colm <- as.numeric(input$countries)
+            pVal <- as.numeric(input$P)
+            qVal <- as.numeric(input$Q)
+            dVal <- as.numeric(input$diff)
+            spVal <- as.numeric(input$sP)
+            sqVal <- as.numeric(input$sQ)
+            sdVal <- as.numeric(input$sDiff)
+            fore <- forecast(Arima(dataTrain(),
+                                   order=c(pVal,dVal,qVal),
+                                   seasonal=c(spVal,sdVal,sqVal)),h=110)
+            print(c('BIC value: ',round(BIC(fore$model),3)))
+        })
+        output$myPlotTSBIC <- renderText({p5()})
+
+        output$printRec <- renderText({
+          colm <- as.numeric(input$countries)
+          if (colm == 1) {
+            print('Recommended model: Arima(c(0,0,1),c(2,1,1))')}
+          else if (colm == 2) {
+            print('Recommended model: Arima(c(1,0,0),c(2,1,1))')}
+          else if (colm == 3) {
+            print('Recommended model: Arima(c(0,0,2),c(2,1,2))')}
+          else if (colm == 4) {
+            print('Recommended model: Arima(c(2,0,1),c(2,1,1))')}
+          else if (colm == 5) {
+            print('Recommended model: Arima(c(1,0,0),c(1,1,2))')}
+          else if (colm == 6) {
+            print('Recommended model: Arima(c(2,0,2),c(2,1,1))')}
+          else if (colm == 7) {
+            print('Recommended model: Arima(c(0,0,2),c(2,1,0))')}
+        
+        })
+        
+        observeEvent(input$Reset,{
+          output$myPlotTS<<-NULL
+          output$mytableRes1<<-NULL
+          output$myPlotTSacc<<-NULL
+        })
+
+        observeEvent(input$Plot,{
+          output$myPlotTS<- renderPlot({p1()})
+          output$mytableRes1<- renderPlot({p2()})
+          output$myPlotTSacc<- renderTable({p3()})
+        })
+    }
+ 
+)
+
+```
+
+
+```{r,echo = FALSE}
+br()
+br()
+br()
+br()
+br()
+br()
+br()
+br()
+```
+
