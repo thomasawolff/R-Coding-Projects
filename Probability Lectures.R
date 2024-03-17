@@ -6,19 +6,27 @@ dice1 <- 1:6
 dice2 <- 1:6
 dice3 <- 1:6
 
+# Combination of all possible outcomes between both dice
+# tosses is our sample space
 tosses <- expand.grid(dice1,dice2)
 
+# Combining probabilities of dice 1 and dice 2
 X <- tosses$Var1 + tosses$Var2
 
+# Find probabilities that X greater than 7
+# Takes total events > 7 = True divided by sample space length(X)
 sum(X > 7)/length(X)
 
+# Find probability that X is odd (not divisible by 2)
 sum(X %% 2 != 0)/length(X)
 
-
+# Combination of all possible outcomes between all dice
 tosses_3 <- expand.grid(dice1,dice2,dice3)
 
+# Getting sum of every possible toss. By row.
 X <- apply(tosses_3, 1, sum)
 
+# Probability that X will be greater than 14
 sum(X > 14)/length(X)
 
 hist(X)
