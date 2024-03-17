@@ -40,29 +40,32 @@ dice4 <- 1:6
 tosses_4 <- expand.grid(dice1,dice2,dice3,dice4)
 X <- apply(tosses_4, 1, sum)
 
-sum(X < 19)/length(X) # == .902 or 90%
+sum(X < 12)/length(X) # == .902 or 90%
 hist(X)
 
 sum(X %% 2 == 0)/length(X) # == .464 or 46%
 hist(X)
 
-sum(X < 19 & X %% 2 == 0)/length(X) # == .464 or 46%
+sum(X < 12 & X %% 2 == 0)/length(X) # == .464 or 46%
 hist(X)
 
 
 ## Binomial distribution
+# Determines the probability of observing a specified number of successful outcomes in specified number of trials
+# Each trial has the same probability
 # trials
 n = 9
 X = 6
 
+
 fact_n = factorial(n)
 fact_X = factorial(X)
 fact_notX = factorial(n - X)
-all_possible_outcomes = fact_n/(fact_notX * fact_X)
+all_possible_outcomes = fact_n/(fact_notX * fact_X) # Finding all possible outcomes
 
 p_6_women = 0.8^6
-p_3_men = (1-0.8)^3
-final = all_possible_outcomes*p_6_women*p_3_men
+p_3_men = (1-0.8)^3 # The ^3 comes from 9 - 6 = 3
+final = all_possible_outcomes*p_6_women*p_3_men # = 0.1761608 or 17%
 
   
   
@@ -80,7 +83,7 @@ all_possible_outcomes = fact_n/(fact_notx*fact_x)
 p_heads = p^x
 p_tails = p^(n-x)
 
-prob_9_heads = all_possible_outcomes*p_heads*p_tails
+prob_9_heads = all_possible_outcomes*p_heads*p_tails # = 0.1601791 or 16%
 
 binomialDistribution(10,45,0.55)
 
@@ -92,11 +95,12 @@ pbinom(9, size=20, prob=0.5) # probability of 9 or fewer heads on 20 flips
 pbinom(10, size=45, prob=0.55)
 
 
-prob_vector = c()
-for(X in 0:10) {
-  n= 45
+# for looping binomial distribution
+prob_vector = c() # Empty vector to store values
+for(X in 0:19) {
+  n= 20
   x = X
-  p = 0.55
+  p = 0.5
   fact_n = factorial(n)
   fact_x = factorial(x)
   fact_notx = factorial(n - x)
@@ -108,14 +112,16 @@ for(X in 0:10) {
   
   prob__heads = all_possible_outcomes*p_outcome1*p_outcome2
   
-  prob_vector[x] = prob__heads
+  prob_vector[X] = prob__heads
 }
 
 sum(prob_vector)
 
 
 ## Poisson distribution
-
+# Expresses the probability of a given number of events occurring in a fixed interval of time
+# or space if these events occur with a known constant mean rate and independently of the time
+# since the last event.
 lambda = 2.5
 k = 5
 prob_5_goals = lambda^k *exp(-lambda)/factorial(k) 
