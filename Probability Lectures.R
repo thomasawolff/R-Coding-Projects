@@ -50,6 +50,7 @@ sum(X < 12 & X %% 2 == 0)/length(X) # == .464 or 46%
 hist(X)
 
 
+
 ## Binomial distribution
 # Determines the probability of observing a specified number of successful outcomes in specified number of trials
 # Each trial has the same probability
@@ -122,23 +123,53 @@ sum(prob_vector)
 # Expresses the probability of a given number of events occurring in a fixed interval of time
 # or space if these events occur with a known constant mean rate and independently of the time
 # since the last event.
-lambda = 2.5
-k = 5
+lambda = 2.5 # Average number of goals per World Cup game.
+k = 5 # Target value of 5
+# exp is Eulers number
 prob_5_goals = lambda^k *exp(-lambda)/factorial(k) 
 
-dpois(5,2.5)*100
+dpois(5,2.5)*100 # gives the Poisson probability
 
-k = c(0:10)
-prob = c()
+k = c(0:10) # Creating vector of possible goals scored
+prob = c() # Empty vector of probabilities
 
-for (i in 0:10) {
+for (i in 0:10) { # looping over probabilities of i number of goals
   prob[i+1] = dpois(i,lambda=lambda)
 }
 
-sum(prob)
-plot(k,prob)
+plot(k, prob,
+     type = "b", pch = 18, col = 4,
+     xlab = "Goals Scored", ylab = "Probability")
   
   
+
+# Normal Distributions example
+hist(rnorm(100000,20,2)) # 300 runs, average of 20, SD of 2. Random data
+
+# What is probability that John (avid runner) will take more than 25 minutes?
+probability_lessThan25 <- pnorm(25,20,2)
+probability_moreThan25 <- 1 - probability_lessThan25
+probability_moreThan25*100
+
+# What is probability that John (avid runner) will take less than 17 minutes?
+probability_lessThan17 <- pnorm(17,20,2)
+probability_lessThan17*100
+
+# What is probability that John (avid runner) will take between 18 and 23 minutes
+probability_lessThan18 <- pnorm(18,20,2)
+probability_lessThan23 <- pnorm(23,20,2)
+probability_between18and23 = (probability_lessThan23 - probability_lessThan18)*100 # = 77.45375
+
+
+
+## Uniform distributions
+uniform <- runif(100000,2,9) # creates Uniform distribution of data
+hist(uniform)
+spread <- max(uniform) - min(uniform)
+# Probability than any number chosen is less than 4
+less_than_4 <- ((4 - min(uniform))/spread)*100 # 28.6% chance
+
+
   
 ## relative risk
 
