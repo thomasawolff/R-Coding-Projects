@@ -138,4 +138,42 @@ t.test(drivers~law, data = seatbelts_df)
 
 ## Hypothesis testing for binomial distribution:
 
+# number of trials / number of heads * number of tails
+factorial(20)/(factorial(10)*factorial(10))*((0.5^10) * (0.5^10))
+
+dbinom(10,20,0.5) # probability of having 10 heads in 20 trials
+pbinom(10,20,0.5) # probability of having 10 or less heads in 20 trials
+
+# NULL hypothesis: coin is fair
+# Alternate hypothesis: coin is not fair
+# In 20 trails, got 4 heads:
+pbinom(4,20,0.5)
+# less than 1 % chance of 4 heads in 20 trials, less than the 0.5% chance
+# Reject NULL hypothesis, accept Alternate hypothesis than coin is not fair
+
+
+## Democratic party senators: usually are 70% vote for green bill
+# Survey sample of 20: 5 yes, 15 no. What is chance that 4 people or less will vote yes for bill out of 20
+pbinom(4,20,0.7)
+
+
+
+## Bayesian Inference:
+
+prob <- seq(0,1,length.out = 20)
+prior <- dbinom(10,20,prob=prob)
+plot(1:20,prior,xlab='trials',ylab='probability of heads',type='l',ylim = c(0,0.22),col='blue')
+
+# the distribution of the 20 coin flips with 4 heads
+data_estimate <- dbinom(4,20,prob = prob)
+lines(1:20,data_estimate,col='red')
+
+# calculating the distribution of the true coin. Weighted distribution of the fair coin and unfair coin
+posterior <- (prior + data_estimate)/sum(prior+data_estimate)
+lines(1:20,posterior,col='green')
+
+
+
+
+
 
