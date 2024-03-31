@@ -65,7 +65,14 @@ data.ex2 <- read.table(dataFileName,header = T)
 Analyzing weather dosage changes made a difference in alertness between men and women
 
 ```{r}
-two_way <- aov(Alertness~ Gender + Dosage,data = data.ex2)
+two_way <- aov(Alertness~ Gender* Dosage,data = data.ex2)
 summary(two_way)
 ```
 Cannot reject the null hypothesis that there is no variance with p value greater than 0.05
+
+```{r}
+boxplot(Alertness~ Gender + Dosage, data = data.ex2)
+```
+
+
+
