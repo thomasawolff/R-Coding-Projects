@@ -1,0 +1,174 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+
+
+```{r}
+library(readr)
+library(caret)
+library(MASS)
+library(stringr)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(corrplot)
+library(ggfortify)
+library(gridExtra)
+library(moments)
+```
+
+```{r}
+setwd("C:/R Coursework")
+housing <- read_csv('housing.csv', quote = ',')
+
+# Changing names of columns at index 1 and 8
+names(housing)[c(1,8)] <- c('sf','elevation')
+
+# Removing strings '\' from the housing$sf column
+housing$sf <- str_remove(housing$sf,'\"')
+
+# Removing strings '\' from the housing$elevation column
+housing$elevation <- str_remove(housing$elevation,'\"')
+
+# Changing data type of beds to factor
+housing$beds <- factor(housing$beds, ordered = TRUE)
+
+# Changing data type of elevation to numeric
+housing$elevation <- as.numeric(housing$elevation)
+
+#housing <- housing[c('sf','beds','bath','price','year_built','sqft','price_per_sqft','elevation')]
+housing <- housing[c('beds','bath','price','year_built','sqft','price_per_sqft','elevation')]
+housing$beds <- as.numeric(housing$beds)
+
+housing
+```
+
+```{r}
+normalizeData <- function(dataField) {
+  MinimaxNorm <- (dataField - min(dataField))/(max(dataField) - min(dataField))
+  #zscaleNorm <-(dataField - mean(dataField))/sd(dataField)
+  return(MinimaxNorm)
+}
+```
+
+
+Performing skew and the Jarque-Bera test. P val < 0.05 shows 
+ data does not match normal distribution. Null hypothesis
+ is that data has normal normal distribution
+
+```{r}
+skew <- function(x) {
+  print(skewness(x)) 
+  print(kurtosis(x)) 
+  jarque.test((x)) 
+}
+```
+
+
+
+
+```{r}
+ExploratoryAnalysis <- function(data,dataField) {
+  pairs(data)
+  M <- cor(data)
+  corrplot(M, method = 'number')
+}
+
+```
+
+
+
+
+```{r}
+scatterplot <- function(data,x,y) {
+  ggplot(data, aes(x=x, y=y)) + geom_point(size = 2, color = 'orange') +
+  scale_y_continuous(labels = function(x) format(x, scientific = FALSE),limits=c(0, 30000000))
+}
+```
+
+
+
+
+```{r}
+histogram <- function(data,x,y,bins) {
+  ggplot(data, aes(x=x)) +
+    geom_histogram(aes(y=..density..),color='lightblue',bins = bins) +
+    geom_density(color = 'lightgreen',size = 2) +
+    scale_y_continuous(labels = function(x) format(x, scientific = FALSE))
+}
+```
+
+
+
+
+```{r}
+model <- lm(price_per_sqft~sqft+beds+bath+year_built+elevation,data = housing)
+summary(model)
+```
+
+
+
+
+```{r}
+lmResidualsPlot <- function(model,residuals,fitModel) {
+  plot(density(residuals))
+  #qqnorm(residuals)
+  #qqline(residuals)
+  #autoplot(fitModel)
+  par(mfrow = c(2, 2))  # Split the plotting panel into a 2 x 2 grid
+  plot(model)  # Plot the model information
+}
+```
+
+
+
+
+```{r}
+plotPointsResiduals <- function(data,x,y,residuals,fitModel) {
+  ggplot(data, aes(x = x, y = y)) +
+    geom_segment(aes(xend = x, yend = fitModel), alpha = .2) +  # Lines to connect points
+    geom_point(aes(color = residuals)) +
+    scale_color_gradient2(low = "blue", mid = "white", high = "red") +
+    geom_point() +  # Points of actual values
+    geom_point(aes(y = fitModel), shape = 1) +  # Points of predicted values
+    theme_bw()
+}
+```
+
+
+
+
+```{r}
+modelInteractions <- function(model) {
+  anova(model)
+}
+
+```
+
+
+
+
+```{r}
+lmPerformance <- function(model1,model2,targetField) {
+  #coefficients(model1)
+  #coefficients(model2)
+  print(summary(model2))
+  print(anova(model_multiplicative,model2))
+  fitted_multiplicative <- stats::fitted(model2)
+  mse <- mean((targetField - fitted_multiplicative)^2)
+  print(mse)
+}
+
+```
+

@@ -173,14 +173,16 @@ less_than_4 <- ((4 - min(uniform))/spread)*100 # 28.6% chance
   
 ## relative risk
 
-setwd('C:/Users/moose_m7y2ik3/Google Drive/R-Course-HTML-Notes')
+setwd('C:/Users/CBA463/Downloads')
 
 library(readr)
 
 tiktok <- read_csv('categorical.csv')
 
+# Creating a proportion table from aggregation table of tiktok users. Margin 1 is rows, 2 is columns
 prop_table <- prop.table(table(tiktok$group,tiktok$tiktok),margin = 1)
 
+# Dividing the proportion of teens by the proportion of adults. 2.25 higher chance that teens will have tiktok account
 rr <- prop_table[2,2]/prop_table[1,2]
 
 
@@ -198,7 +200,7 @@ sum(is.na(cars$city_miles_per_galloon)==TRUE)
 
 sum(is.na(cars$horsepower)==TRUE)
 
-## remove NA's
+# remove NA's
 
 cars_clean <- na.omit(cars)
 
