@@ -9,7 +9,7 @@ library(corrplot)
 library(ggfortify)
 library(gridExtra)
 
-setwd("C:/R Coursework")
+setwd("C:/Users/moose_m7y2ik3/Downloads")
 housing <- read_csv('housing.csv', quote = ',')
 
 # Changing names of columns at index 1 and 8
