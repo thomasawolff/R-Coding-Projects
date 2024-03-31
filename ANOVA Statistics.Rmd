@@ -1,0 +1,71 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+Whenever you perform a one-way ANOVA, you will always compute three sum of squares values:
+
+1. Treatment Sum of Squares (SST)
+
+    This is the sum of the squared differences between each group mean and the grand mean.
+
+2. Within Group Sum of Squares (SSE)
+
+    This is the sum of the squared differences between each individual observation and the group mean of that observation.
+
+3. Total Sum of Squares (TSS)
+
+    This is the sum of the squared differences between each individual observation and the grand mean.
+
+4. Sum of Squares Total (SST)
+    SST = SST + SSE
+
+```{r}
+library(ggplot2)
+library(dplyr)
+
+iris %>% ggplot(aes(x = Species,y = Petal.Width, color = Species)) + geom_point() + theme_classic()
+iris %>% ggplot(aes(x = Species,y = Petal.Length, color = Species)) + geom_point() + theme_classic()
+
+```
+
+
+```{r}
+
+# Analysis of Variance calculation
+
+sepal_aov <- aov(Sepal.Length ~ Species, data = iris)
+summary(sepal_aov)
+```
+
+
+With a low p-value we reject the null hypothesis that there is no variance and accept the alternate hypothesis.
+
+```{r}
+petal_aov <- aov(Petal.Width ~ Species, data = iris)
+summary(petal_aov)
+```
+For ANOVA testing the samples must be equal
+Tukey Significance test: taking the ANOVA and analyzing each factor seperately
+
+```{r}
+TukeyHSD(sepal_aov)
+```
+```{r}
+TukeyHSD(petal_aov)
+```
+
+Two-way ANOVA: Analyze 2 categorical variables against 1 continuous variable
+
+```{r}
+dataFileName <- "http://personality-project.org/r/datasets/R.appendix2.data"
+data.ex2 <- read.table(dataFileName,header = T)
+```
+
+Analyzing weather dosage changes made a difference in alertness between men and women
+
+```{r}
+two_way <- aov(Alertness~ Gender + Dosage,data = data.ex2)
+summary(two_way)
+```
+Cannot reject the null hypothesis that there is no variance with p value greater than 0.05
