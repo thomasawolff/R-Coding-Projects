@@ -40,4 +40,20 @@ split1 <- initial_split(housing_cleaned, prop = 0.8, strata = 'price_per_sqft')
 train <- training(split1)
 test <- testing(split1)
 
+dummy::dummy(train[c(2)])
+
+
+train <- train %>% mutate(across(c(3),factor))
+dummy::dummy(train[c(3)])
+
+str(train)
+
+train$beds <- dummy::dummy(train[c(2)])
+
+train$bath <- dummy::dummy(train[c(3)])
+
+housing_training <- model.matrix(price_per_sqft~.,train)
+
+
+
 

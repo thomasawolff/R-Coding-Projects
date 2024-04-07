@@ -50,7 +50,7 @@ grid.arrange(all,sf,ny)
 
 boxplot(price_per_sqft ~ sf, data= housing)
 
-# Creatign a linear model (callable) for data
+# Creating a linear model (callable) for data
 model_sqft <- lm(price_per_sqft ~ sqft, data = housing)
 
 # Summary of the model
@@ -98,7 +98,7 @@ anova(model_sqft_city)
 
 
 # Including model interactions with the model
-model_interaction <- lm(price_per_sqft ~ (sqft*sf)+beds+bath+year_built,elevation, data = housing)
+model_interaction <- lm(price_per_sqft ~ (sqft*sf), data = housing)
 
 # Model summary
 summary(model_interaction)
@@ -115,12 +115,11 @@ prediction_interaction$manual <- coefficients(model_interaction)[[1]] +
   coefficients(model_interaction)[[3]] * as.numeric(housing$sf) + 
   housing$sqft * as.numeric(housing$sf) * coefficients(model_interaction)[[4]]
 
+mse_interaction <- mean((housing$price_per_sqft - prediction_interaction[,1])^2)
 
 # ANOVA testing to compare models
 anova(model_sqft_city,model_interaction)
 
-housing_cleaned$bath <- as.ordered(housing_cleaned$bath)
-housing_cleaned$beds <- as.ordered(housing_cleaned$beds)
 
 
 
@@ -129,41 +128,62 @@ housing_cleaned$beds <- as.ordered(housing_cleaned$beds)
 
 # Taking only rows of data with bedrooms between 1 and 6 and baths between 1 and 7
 housing_cleaned <- housing %>% dplyr::filter(beds %in% c(0,1,2,3,4,5,6)) %>% dplyr::filter(bath %in% c(1,2,3,4,5,6,7))
+housing_cleaned$bath <- as.ordered(housing_cleaned$bath)
+housing_cleaned$beds <- as.ordered(housing_cleaned$beds)
 
 
 housing_cleaned$price <- NULL
 #housing_cleaned$bath <- as.ordered(housing_cleaned$bath)
 #housing_cleaned$beds <- as.ordered(housing_cleaned$beds)
 
+# Regressing all values
 model_additive <- lm(price_per_sqft~.,data = housing_cleaned)
 summary(model_additive)
 
+# Changing the names of the model coefficients
+names(model_additive$coefficients) <- c('sf','beds0','beds1','beds2','beds3','beds4','beds5','beds6',
+                                        'bath1','bath2','bath3','bath4','bath5','year_built','sqft','elevation')
+
+# Fitting the model
 fitted_additive <- stats::fitted(model_additive)
 
-mse <- mean((housing_cleaned$price_per_sqft - fitted_additive)^2)
-
-
-model_multiplicative <- lm(price_per_sqft~(sf*sqft)+beds+bath+year_built+elevation,data = housing_cleaned)
-summary(model_multiplicative)
-
-
-str(housing_cleaned)
-
-anova(model_additive,model_multiplicative)
-
-fitted_multiplicative <- stats::fitted(model_multiplicative)
-
-mse <- mean((housing_cleaned$price_per_sqft - fitted_multiplicative)^2)
+# Calculating the MSE
+mse_additive <- mean((housing_cleaned$price_per_sqft - fitted_additive)^2)
 
 
 
-feature_importance <- varImp(model_multiplicative)
+# Building the multiplicative model
+model_interaction <- lm(price_per_sqft~(sf*sqft)+beds+bath+year_built+elevation,data = housing_cleaned)
+summary(model_interaction)
+
+
+# Changing the names of the model coefficients
+names(model_interaction$coefficients) <- c('sf','beds0','beds1','beds2','beds3','beds4','beds5','beds6',
+                                        'bath1','bath2','bath3','bath4','bath5','year_built','sqft','elevation','sf:sqft')
+
+# Fitting multiplicative model
+fitted_interaction <- stats::fitted( model_interaction)
+
+# Calculating the MSE
+mse_interactive <- mean((housing_cleaned$price_per_sqft - fitted_interaction)^2)
+
+
+
+# Comparing two models using ANOVA
+anova(model_additive,model_interaction)
+
+
+feature_importance <- varImp(model_interaction)
 feature_importance %>% arrange(desc(Overall))
 
-length(coefficients(model_multiplicative))
+
+
 
 
 model_multiplicative2 <- lm(price_per_sqft~sf*sqft*beds*bath*year_built*elevation,data = housing_cleaned)
+
+# coefficients(model_interaction)[is.na(coefficients(model_interaction))==FALSE]
+
 step_process <- stepAIC(model_multiplicative2, direction = 'both')
 
 
@@ -171,27 +191,26 @@ proposed_model <- lm(price_per_sqft ~ sf + sqft + beds + bath + year_built + ele
                        sf:sqft + sf:beds + sqft:beds + sf:bath + sqft:bath + beds:bath + 
                        sf:year_built + sqft:year_built + beds:year_built + bath:year_built + 
                        sf:elevation + sqft:elevation + beds:elevation + bath:elevation + 
-                       year_built:elevation + sf:sqft:beds + sf:sqft:bath + sf:beds:bath + 
-                       sqft:beds:bath + sf:sqft:year_built + sf:beds:year_built + 
-                       sqft:beds:year_built + sf:bath:year_built + sqft:bath:year_built + 
-                       beds:bath:year_built + sf:sqft:elevation + sf:beds:elevation + 
-                       sqft:beds:elevation + sf:bath:elevation + sqft:bath:elevation + 
+                       year_built:elevation + sf:sqft:beds + sf:sqft:bath + sqft:beds:bath + 
+                       sf:sqft:year_built + sf:beds:year_built + sqft:beds:year_built + 
+                       sf:bath:year_built + sqft:bath:year_built + beds:bath:year_built + 
+                       sf:sqft:elevation + sf:beds:elevation + sqft:beds:elevation + 
+                       sf:bath:elevation + sqft:bath:elevation + beds:bath:elevation + 
                        sf:year_built:elevation + sqft:year_built:elevation + beds:year_built:elevation + 
-                       bath:year_built:elevation + sf:sqft:beds:bath + sf:sqft:beds:year_built + 
-                       sf:sqft:bath:year_built + sf:beds:bath:year_built + sf:sqft:beds:elevation + 
-                       sf:sqft:bath:elevation + sf:sqft:year_built:elevation + sf:beds:year_built:elevation + 
-                       sqft:beds:year_built:elevation + sf:bath:year_built:elevation + 
-                       sqft:bath:year_built:elevation + sf:sqft:beds:year_built:elevation + 
-                       sf:sqft:bath:year_built:elevation, data = housing_cleaned)
+                       bath:year_built:elevation + sf:beds:bath + sf:sqft:beds:year_built + 
+                       sf:sqft:bath:year_built + sf:sqft:beds:elevation + sf:sqft:bath:elevation + 
+                       sf:beds:year_built:elevation + sf:bath:year_built:elevation,data = housing_cleaned)
 
 
 summary(proposed_model)
 
-anova(model_multiplicative,proposed_model)
+coefficients(proposed_model)[is.na(coefficients(proposed_model))==FALSE]
 
-fitted_multiplicative <- stats::fitted(proposed_model)
+anova(model_interaction,proposed_model)
 
-mse <- mean((housing_cleaned$price_per_sqft - fitted_multiplicative)^2)
+fitted_proposed <- stats::fitted(proposed_model)
+
+mse <- mean((housing_cleaned$price_per_sqft - fitted_proposed)^2)
 
 
 
