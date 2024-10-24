@@ -113,6 +113,13 @@ abline(0,1, col = "red", lty =2)
 qqnorm(resid(lmm6.2, type = "normalized"),xlim = lims, ylims = lims, main = "lmm6.2")
 abline(0,1, col = "red", lty  =2)
 
+summary(lmm6.2)
+
+
+lmm8 <- update(lmm6.2, .~. + nutrient:amd)
+summary(lmm8)
+anova(lmm8, lmm6.2)
+
 
 
 
