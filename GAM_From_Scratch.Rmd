@@ -1,0 +1,282 @@
+---
+title: "GAM From Scratch Markdown"
+author: "Thomas Wolff"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=TRUE}
+#### Using the cubic spline basis
+#### STEP 1: Read in data
+
+library(ISLR)
+
+par(mfrow=c(1,1))
+
+# size <- c(1.42,1.58,1.78,1.99,1.99,1.99,2.13,2.13,2.13,
+#           2.32,2.32,2.32,2.32,2.32,2.43,2.43,2.78,2.98,2.98)
+# target <- c(4.0,4.2,2.5,2.6,2.8,2.4,3.2,2.4,2.6,4.8,2.9,
+#           3.8,3.0,2.7,3.1,3.3,3.0,2.8,1.7)
+
+size <- c(lapply(Wage['age'], as.numeric))
+target <- c(lapply(Wage['wage'], as.numeric))
+
+xs <- size$age-min(size$age);
+x <- xs/max(xs)
+
+ys <- Wage$wage-min(Wage$wage);
+target <- ys/max(ys)
+
+```
+
+
+```{r plot_data, echo=TRUE}
+## Plot x and y by Scaled x:
+plot(x,target,xlab="Scaled Age of Workers",ylab="Scaled Wage")
+```
+
+## R Markdown
+
+Establish the basis for the cubic spline function. This is the Gu equation.
+This function serves to return the matrix values for columns 3 through q in the model matrix
+
+```{r rk_function, echo=TRUE}
+## Column 1 is all 1
+## Column 2 is all x
+rk <- function(x,z) # R(x,z) for the cubic spline on [0,1]
+{
+  return(((z-0.5)^2-1/12) * ((x-0.5)^2-1/12)/4-((abs(x-z)-0.5)^4-(abs(x-z)-0.5)^2/2+7/240)/24)
+}
+```
+
+## Producing model matrix from sequence of knots
+
+This function accepts a sequence of knots and an array of x values to produce model matrix for the spline 
+
+```{r model_matrix, echo=TRUE}
+spl.X <- function(x,xk)
+  # Set up the model matrix for cubic penalized regression spline
+{
+  q <- length(xk)+2 # number of parameters
+  n <- length(x) # number of data
+  X <- matrix(1,n,q) # initialized model matrix
+  X[,2] <- x # set second column to x
+  X[,3:q] <- outer(x,xk,FUN=rk) # and remaining columns to R(x,xk)
+  return(X)
+}
+```
+
+
+
+```{r model_vars, echo=TRUE}
+xk <- c(0.25,0.38,0.53,0.75)  # knots from quantile(x) command
+X <- spl.X(x,xk) # generate model matrix
+mod.1 <- lm(target~X-1) # fit model
+xp <- 0:100/100    # x values for prediction
+Xp <- spl.X(xp,xk) # prediction matrix
+#plot(x,target,xlab="Scaled engine size",ylab="Wear index")
+#line(xp,Xp%*%coef(mod.1)) # plot fitted spline
+```
+## Controlling smoothing
+
+Here we control the degree of smoothing with penalized regression splines
+We obtain S, the matrix for the 2nd derivative of the curve
+
+```{r spills_func, echo=TRUE}
+spl.S <- function(xk)
+# set up the penalized regression spline penalty matrix, given knot sequence xk
+  # Function returns the matrix of the 2nd derivative of the curve
+{
+  q <- length(xk) + 2; S<-matrix(0,q,q) # initialize the matrix to 0
+  S[3:q,3:q] <- outer(xk,xk,FUN=rk)
+  return(S)
+}
+
+# Returning the square root of the derivative matrix above 
+mat.sqrt <-function(S) 
+{
+  d <- eigen(S, symmetric = TRUE)
+  rS <- d$vectors%*%diag(d$values^0.5)%*%t(d$vectors)
+}
+
+```
+
+
+## Fitting the penalized regression spline to x,y data
+
+```{r fit_penalized_regress, echo=TRUE}
+prs.fit <- function(y,x,xk,lambda)
+# function to fit penalized regression spline to x,y data
+# with knot locations xk, given smoothing parameter lambda
+{
+  q <- length(xk) + 2 # dimension of basis
+  n <- length(x) # number of data rows
+  # create augmented model matrix
+  Xa <- rbind(spl.X(x,xk), mat.sqrt(spl.S(xk))*sqrt(lambda)) # max.sqrt(spl.S(xk)) is the penalty
+  y[(n+1):(n+q)] <- 0 # augment the data vector
+  return(lm(y~Xa-1)) # fit and return penalized regression spline
+}
+```
+
+
+
+
+```{r fit_penalized_regress_vizz, echo=TRUE}
+# xk <- 1:7/8
+# mod.2 <- prs.fit(wear,x,xk,0.001)
+# Xp <- spl.X(xp,xk) # matrix to map params to fitted values at xp
+# plot(x,wear);lines(xp,Xp%*%coef(mod.2)) # plot data and sql fit
+
+```
+
+## GCV for finding optimal Smoothing Parameter
+
+```{r GCV_Optimal_Smoothing, echo=TRUE}
+lambda <- 1e-8; 
+iterations <- 40;
+n <- length(target); 
+V <- rep(0,iterations)
+
+for (i in 1:iterations) {
+  mod <- prs.fit(target,x,xk,lambda) # fit model, given lambda
+  trA <- sum(influence(mod)$hat[1:n]) # find tr(A)
+  rss <- sum((target-fitted(mod)[1:n])^2) # residual sum of squares
+  V[i] <- n*rss/(n-trA)^2 # obtain GCV score
+  lambda <- lambda*1.5 #increase lambda
+}
+plot(1:iterations,V,type="l",main="GCV score", xlab="Iterations") # plot the score
+```
+
+
+```{r GCV_Optimal_Model, echo=TRUE}
+i <- (1:iterations) [V==min(V)]
+print(noquote(paste0("Iteration: ",i,".  Optimal lambda: ",1.5^(i-1)*10^-8)))
+mod.4 <- prs.fit(target,x,xk,(1.5^(i-1)*10^-8))
+Xp <- spl.X(xp,xk)
+
+```
+
+
+
+```{r Model_Summary, echo=TRUE}
+
+plot(x,target,xlab="Scaled Age of Workers",ylab="Scaled Wage"); 
+lines(xp,Xp%*%coef(mod.4),col="red",lwd=3)
+knots <- c(0.25,0.38,0.53,0.75) 
+abline(v=knots[1], col="green")
+abline(v=knots[2], col="green")
+abline(v=knots[3], col="green")
+abline(v=knots[4], col="green")
+
+summary(mod.3)
+
+```
+
+
+```{r Model_Residuals, echo=TRUE}
+
+par(mfrow=c(2,2))
+plot(mod.4)
+
+```
+## ANOVA testing for a difference between models
+
+```{r ANOVA_Compare, echo=TRUE}
+
+anova(mod.3,mod.4)
+
+```
+## Two Term Additive Model
+
+Penalized regression spline representation of an additive model
+
+```{r Two Term Additive Model, echo=TRUE}
+
+am.setup <- function(x, z, q=10)
+# Get X, S_1, S-2 for a simple 2 term AM
+{
+  # spacing the knots by quantile
+  xk <- quantile(unique(x), 1:(q-2)/(q-1)) # knot locations x
+  zk <- quantile(unique(z), 1:(q-2)/(q-1)) # know locations z
+  # get penalty matrices
+  S <- list()
+  S[[1]] <- S[[2]] <- matrix(0, 2*q-1, 2*q-1) # initialize two components
+  S[[1]][2:q,2:q] <- spl.S(xk)[-1,-1] # penalty matrices by calling spl.S
+  S[[2]][(q+1):(2*q-1),(q+1):(2*q-1)] <- spl.S(zk)[-1,-1]
+  # get model matrix
+  n <- length(x)
+  X <- matrix(1,n,2*q-1)
+  # Model matrix is constructed by combining columns of the model matrices by calling spl.X
+  X[,2:q] <- spl.X(x,xk)[,-1]     # first smooth
+  X[,(q+1):(2*q-1)] <- spl.X(z,zk)[,-1] # second smooth
+  
+  # matrix of the additive model.S is list containing 2 penalty matrices
+  return(list(X=X,S=S))
+}
+
+```
+
+
+## Fitting two-term additive model
+
+```{r Fitting two term model, echo=TRUE}
+
+fit.am <- function(y,X,S,sp)
+{
+  # get sqrt of total penalty matrix
+  rS <- mat.sqrt(sp[1]*S[[1]]+sp[2]*S[[2]])
+  q.tot <- ncol(X) # number of params
+  n <- nrow(X)  # number of data rows
+  X1 <- rbind(X,rS) # augmented model matrix X
+  y1 <- c(y,rep(0,q.tot)) # augment data
+  b <- lm(y1~X1-1) # fit model
+  trA <- sum(influence(b)$hat[1:n]) # tr(A)
+  norm <- sum((y-fitted(b)[1:n])^2)
+  return(list(model=b,gcv=norm*n/(n-trA)^2,sp=sp))
+}
+
+```
+
+
+## Fitting data for 31 felled Cherry trees
+
+Volume, girth, and height for 31 felled Cherry trees. We want to predict Volume using girth and height
+
+Volume = f1(Girth) +f2(Height) + Epsilon(i)
+
+```{r Using two term model with tree data, echo=TRUE}
+data(trees)
+
+rg <- range(trees$Girth) # rg has low, high for girth
+trees$Girth <-(trees$Girth = rg[1])/(rg[2]-rg[1]) #scaling between 0 and 1
+rh <- range(trees$Height)
+trees$Height <- (trees$Height = rh[1])/(rh[2]=rh[1])
+
+# Obtaining the model matrix and penalty matrices
+am0 <- am.setup(trees$Girth,trees$Height)
+
+```
+
+## Grid search to find model fit for minimizing the GCV score
+
+```{r Grid search, echo=TRUE}
+
+sp <- c(0,0) # initialize smoothing parameter (s.p) array
+for (i in 1:30) for (j in 1:30) #loop over s.p. grid
+{
+  sp[1]<-1e-5*2^(i-1);
+  sp[2]<-1e-5*2^(j-1) # s.p.s
+  b <- fit.am(trees$Volume,am0$X,am0$S,sp) # fit using s.p.s
+  if (i+j==2) best<-b else # store first model
+    if(b$gcv<best$gcv) best<-b # store best model
+}
+
+best$sp
+```
+
+
+```{r ANOVA_Compare, echo=TRUE}
+
+am0$S
+
+```
