@@ -10,6 +10,7 @@ output: html_document
 #### STEP 1: Read in data
 
 library(ISLR)
+library(mgcv)
 
 par(mfrow=c(1,1))
 
@@ -45,6 +46,7 @@ This function serves to return the matrix values for columns 3 through q in the 
 ## Column 2 is all x
 rk <- function(x,z) # R(x,z) for the cubic spline on [0,1]
 {
+  #print(((z-0.5)^2-1/12) * ((x-0.5)^2-1/12)/4-((abs(x-z)-0.5)^4-(abs(x-z)-0.5)^2/2+7/240)/24)
   return(((z-0.5)^2-1/12) * ((x-0.5)^2-1/12)/4-((abs(x-z)-0.5)^4-(abs(x-z)-0.5)^2/2+7/240)/24)
 }
 ```
@@ -168,7 +170,7 @@ abline(v=knots[2], col="green")
 abline(v=knots[3], col="green")
 abline(v=knots[4], col="green")
 
-summary(mod.3)
+summary(mod.4)
 
 ```
 
@@ -183,7 +185,7 @@ plot(mod.4)
 
 ```{r ANOVA_Compare, echo=TRUE}
 
-anova(mod.3,mod.4)
+#anova(mod.3,mod.4)
 
 ```
 ## Two Term Additive Model
@@ -248,9 +250,9 @@ Volume = f1(Girth) +f2(Height) + Epsilon(i)
 data(trees)
 
 rg <- range(trees$Girth) # rg has low, high for girth
-trees$Girth <-(trees$Girth = rg[1])/(rg[2]-rg[1]) #scaling between 0 and 1
+trees$Girth <-(trees$Girth - rg[1])/(rg[2]-rg[1]) #scaling between 0 and 1
 rh <- range(trees$Height)
-trees$Height <- (trees$Height = rh[1])/(rh[2]=rh[1])
+trees$Height <- (trees$Height - rh[1])/(rh[2]=rh[1])
 
 # Obtaining the model matrix and penalty matrices
 am0 <- am.setup(trees$Girth,trees$Height)
@@ -266,17 +268,177 @@ for (i in 1:30) for (j in 1:30) #loop over s.p. grid
 {
   sp[1]<-1e-5*2^(i-1);
   sp[2]<-1e-5*2^(j-1) # s.p.s
-  b <- fit.am(trees$Volume,am0$X,am0$S,sp) # fit using s.p.s
+  b<-fit.am(trees$Volume,am0$X,am0$S,sp) # fit using s.p.s
   if (i+j==2) best<-b else # store first model
     if(b$gcv<best$gcv) best<-b # store best model
 }
 
 best$sp
 ```
+## Partial Effects plot scaled girth
+
+This plot shows the effect that scaled girth has on the predicted value f_1 after zeroing out
+all other coefficients and making a prediction on f_1 using just scaled girth. This is 
+a partial effects plot.
+
+This plot also shows the fitted vs predicted values for volume.
+
+```{r Fitted vs Predicted, echo=TRUE}
+# Plot fitted volume against actual volume
+# Estimate of the smooth function of Girth, evaluated at the observed Girths scaled to the [0,1] interval
+
+plot(trees$Volume, fitted(best$model)[1:31],
+     xlab="Fitted Volume",ylab="Actual Volume")
+
+# Evaluate and plot f_1 against Girth
+b <- best$model
+b$coefficients[1] <- 0 # zero the intercept
+b$coefficients[11:19] <- 0 # zero the second smooth coefficients
+f0 <- predict(b) # predict f_1 only, at data values
+
+plot(trees$Girth,f0[1:31], xlab="Scaled Girth", ylab=expression(hat(f[1])))
+```
+## Partial Effects plot scaled height
+
+This plot shows the effect that scaled height has on the predicted value f_2 after zeroing out
+all other coefficients and making a prediction on f_1 using just scaled height. This is 
+a partial effects plot.
 
 
-```{r ANOVA_Compare, echo=TRUE}
-
-am0$S
+```{r Evaluate f_2 against height, echo=TRUE}
+# Evaluate and plot f_2 against height
+# Estimate of the smooth function of Height, evaluated at the observed heights scaled to the [0,1] interval
+b <- best$model
+b$coefficients[1] <- 0 # zero the intercept
+b$coefficients[2:10] <- 0 # zero the first smooth coeffs
+f0 <- predict(b) # predict f_2 only, at data values
+plot(trees$Height,f0[1:31], main="f_2 Predicted by Scaled Height", xlab="Scaled Height", ylab=expression(hat(f[2])))
 
 ```
+
+## Continued tree data modeling using GLM with partial effect plots
+
+Plot shows partial residuals along with confidence intervals. Intervals are using
+Bayesian Credible Intervals.
+
+CIs show uncertainty from results of identifiability constraints applied to the smooth terms
+
+identifiability constraint: the sum of the values at each curve, 
+
+at the observed covariate values, must be 00
+
+
+```{r Thin plate regression, echo=TRUE}
+# Thin plate regression splines: default smoothing spline, 
+  #force low-order polynomial, and dont need to know know locations
+
+ct1 <- gam(Volume~s(Height)+s(Girth), family=Gamma(link=log), data = trees)
+
+par(mfrow=c(1,2))
+plot(ct1,residuals=TRUE) # residuals = TRUE shows partial residuals for each term
+
+summary(ct1)
+
+```
+### Here I added  bs="cr" to each covariate for cubic regression spline
+
+```{r Penalized cubic regression spline basis. Changed to CR, echo=TRUE}
+
+ct2 <- gam(Volume~s(Height, bs="cr")+s(Girth, bs="cr"), family=Gamma(link=log), data = trees)
+
+par(mfrow=c(1,2))
+plot(ct2,residuals=TRUE) # residuals = TRUE shows partial residuals for each term
+
+summary(ct2)
+
+```
+
+### Here I added k = 20 to the Girth covariate for a higher order polynomial basis for the cubic regression spline
+
+This higher basis of the upper limit
+
+```{r Penalized cubic regression spline basis. Higher Order with k, echo=TRUE}
+
+library(mgcv)
+
+ct3 <- gam(Volume~s(Height)+s(Girth, bs="cr", k = 20), family=Gamma(link=log), data = trees)
+
+par(mfrow=c(1,2))
+plot(ct3,residuals=TRUE) # residuals = TRUE shows partial residuals for each term
+
+summary(ct3)
+
+```
+
+### Here I added the gamma parameter which controls how much each degreee of freedom contributes to GCV score
+
+Adjusting this can help protect against overfitting the model, without comprimising model fit.
+
+Increasing gamma causes heavier penalty for each degree of freedom in GCV score
+
+Resulting in model with fewer DF.
+
+```{r Penalized cubic regression spline basis. Gamma Change, echo=TRUE}
+
+ct4 <- gam(Volume~s(Height)+s(Girth), family=Gamma(link=log), data = trees, gamma=1.4)
+
+par(mfrow=c(1,2))
+plot(ct4,residuals=TRUE) # residuals = TRUE shows partial residuals for each term
+
+summary(ct4)
+
+```
+
+### This code smooths more than one predictor: Isotropic
+
+If you have different scales, get a better estimate using a tensor product.
+
+Isotropic is better if the variates are on the same scale. This is a isotropic model: s()
+
+```{r Smooths with more than one predictor. Isotropic s(), echo=TRUE}
+
+ct5 <- gam(Volume~s(Height, Girth, k=25), family=Gamma(link=log), data = trees)
+
+par(mfrow=c(1,2))
+plot(ct5,residuals=TRUE) # residuals = TRUE shows partial residuals for each term
+
+summary(ct5)
+
+```
+
+### This code smooths more than one predictor: tensor product
+
+If you have different scales, get a better estimate using a tensor product.
+
+The tensor product is used as: te(). TP is scale invarient.
+
+```{r Smooths with more than one predictor. Tensor product te(), echo=TRUE}
+
+ct6 <- gam(Volume~te(Height, Girth, k=5), family=Gamma(link=log), data = trees)
+
+par(mfrow=c(1,2))
+plot(ct6,residuals=TRUE) # residuals = TRUE shows partial residuals for each term
+
+summary(ct6)
+
+```
+### Using a factor variable as a predictor
+
+Mixing parametric ans smooth terms
+
+```{r Using a factor variable as a predictor, echo=TRUE}
+
+qnt <- quantile(trees$Height,seq(0,1,0.25)) 
+trees$Hclass <- factor(cut(trees$Height,unique(qnt),include.lowest=TRUE),labels=c("small","medium","large","very large"))
+
+ct7 <- gam(Volume ~ Hclass+s(Girth), family=Gamma(link=log), data = trees)
+
+par(mfrow=c(1,2))
+plot(ct7,all.terms=T) # residuals = TRUE shows partial residuals for each term
+
+summary(ct7)
+
+```
+
+
+

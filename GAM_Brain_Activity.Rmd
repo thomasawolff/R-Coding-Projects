@@ -1,0 +1,27 @@
+---
+title: "GAM_Brain_Activity"
+author: "Thomas Wolff"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Bringing brain activity data into R Studio
+
+```{r Brain Activity Data}
+library(gamair)
+data(brain)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
