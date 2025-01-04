@@ -16,12 +16,26 @@ library(gamair)
 data(brain)
 ```
 
-## Including Plots
+##  Removing outliers from the medFPQ faeture and modeling with Gaussian model
 
-You can also embed plots, for example:
+The plots indicate the model residuals are not Gaussian and that some transformation needs to occur.
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r Removing outliers, echo=FALSE}
+brain <- brain[brain$medFPQ >= 3e-5,]
+
+m0 <- gam(medFPQ~s(Y,X,k=100), data=brain)
+gam.check(m0)
+```
+We can assume that the variance of y is proportional to mu raised to some power Beta 
+where Beta is a parameter that we can estimate with regression
+
+So we take the log of the squared residuals and and regress using the fitted values
+
+To find the value of Beta which is equal to 1.919 (2)
+
+```{r Strip out residuals, echo=FALSE}
+e <- residuals(m0); fv <- fitted(m0)
+lm(log(e^2)~log(fv))
+
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
