@@ -13,6 +13,8 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r Brain Activity Data}
 library(gamair)
+library(mgcv)
+
 data(brain)
 ```
 
@@ -20,7 +22,7 @@ data(brain)
 
 The plots indicate the model residuals are not Gaussian and that some transformation needs to occur.
 
-```{r Removing outliers, echo=FALSE}
+```{r Removing outliers, echo=TRUE}
 brain <- brain[brain$medFPQ >= 3e-5,]
 
 m0 <- gam(medFPQ~s(Y,X,k=100), data=brain)
@@ -29,13 +31,92 @@ gam.check(m0)
 We can assume that the variance of y is proportional to mu raised to some power Beta 
 where Beta is a parameter that we can estimate with regression
 
-So we take the log of the squared residuals and and regress using the fitted values
+So we take the log of the squared residuals and regress using the fitted values
 
 To find the value of Beta which is equal to 1.919 (2)
 
-```{r Strip out residuals, echo=FALSE}
+```{r Strip out residuals, echo=TRUE}
 e <- residuals(m0); fv <- fitted(m0)
 lm(log(e^2)~log(fv))
+
+```
+### Second model fit using a 4th-root transform on the response variable
+
+This transform fixes a lot of the issues with the residuals and the fitted values
+
+```{r Second Model Fit, echo=TRUE}
+m1 <- gam(medFPQ^0.25~s(Y,X,k=100), data=brain)
+gam.check(m1)
+
+```
+
+
+
+```{r Third Model Fit, echo=TRUE}
+m2 <- gam(medFPQ~s(Y,X,k=100), data=brain, family=Gamma(link=log))
+gam.check(m2)
+
+mean(fitted(m1)^4)
+mean(fitted(m2));(mean(brain$medFPQ))
+```
+
+
+### Plotting the brain activity using contour plot
+
+This works well, but this model has many degrees of freedom, and is therefore too complex.
+
+Using and additive model may work better.
+
+```{r Contour Plot, echo=TRUE}
+
+plot <- function(model) {
+  vis.gam(model, plot.type = "contour", too.far=0.03,
+          color="gray", n.grid=60, zlim=c(-1,2), 
+          main=paste0("Model image plot and overlaid contours on scale of linear predictor"))
+}
+
+plot(m2)
+```
+
+### Here we try and additive model to simplify the model and reduce degrees of freedom
+
+Where: log(E[medFPQi]) = f1(Yi) + f2(Xi) where medFPQ ~ Gamma
+
+```{r Additive model Fit, echo=TRUE}
+m3 <- gam(medFPQ~s(Y,k=30) + s(X, k=30), data=brain, family=Gamma(link=log))
+
+gam.check(m3)
+
+```
+### New model with isotropic interaction term s(Y,X,k=100) added as a smoothing parameter.
+
+
+```{r Additive model with isotropic interaction term, echo=TRUE}
+m4 <- gam(medFPQ~s(Y,k=30) + s(X,k=30) + s(Y,X,k=100), data=brain, family=Gamma(link=log))
+
+anova(m3,m4,test="F")
+
+plot(m2)
+
+plot(m3)
+
+plot(m4)
+```
+### Tensor product smooths 
+
+It is worth checking whether tensor product smooths are better than isotropic product smooths
+
+Tensor products are scale invariant and are computationally efficient 
+
+tm is a Tensor product of two cubic regression spline bases, rank 10 * rank 10 = rank 100
+
+tm1 is a purely additive model with two rank 10 cubic regression splines so tm1 is nested within tm
+
+```{r Tensor product model Fit, echo=TRUE}
+## Tensor product on the interaction non-additive model
+tm <- gam(medFPQ~te(Y,X,k=10), data=brain, family=Gamma(link=log))
+
+tm1 <- gam(medFPQ~s(Y,k=10,bs="cr") + s(X,bs="cr",k=10), data=brain, family=Gamma(link=log))
 
 ```
 
