@@ -11,6 +11,7 @@ output: html_document
 
 library(ISLR)
 library(mgcv)
+library(dplyr)
 
 par(mfrow=c(1,1))
 
@@ -19,13 +20,15 @@ par(mfrow=c(1,1))
 # target <- c(4.0,4.2,2.5,2.6,2.8,2.4,3.2,2.4,2.6,4.8,2.9,
 #           3.8,3.0,2.7,3.1,3.3,3.0,2.8,1.7)
 
-size <- c(lapply(Wage['age'], as.numeric))
-target <- c(lapply(Wage['wage'], as.numeric))
+Credit <- Credit %>% filter(Balance != 0) 
 
-xs <- size$age-min(size$age);
+size <- c(lapply(Credit['Income'], as.numeric))
+target <- c(lapply(Credit['Balance'], as.numeric))
+
+xs <- size$Income-min(size$Income);
 x <- xs/max(xs)
 
-ys <- Wage$wage-min(Wage$wage);
+ys <- target$Balance-min(target$Balance);
 target <- ys/max(ys)
 
 ```
@@ -33,7 +36,7 @@ target <- ys/max(ys)
 
 ```{r plot_data, echo=TRUE}
 ## Plot x and y by Scaled x:
-plot(x,target,xlab="Scaled Age of Workers",ylab="Scaled Wage")
+plot(x,target,xlab="Scaled Income",ylab="Scaled Balance")
 ```
 
 ## R Markdown
@@ -71,7 +74,7 @@ spl.X <- function(x,xk)
 
 
 ```{r model_vars, echo=TRUE}
-xk <- c(0.25,0.38,0.53,0.75)  # knots from quantile(x) command
+xk <- c(0.0725,0.1519,0.3028)  # knots from quantile(x) command
 X <- spl.X(x,xk) # generate model matrix
 mod.1 <- lm(target~X-1) # fit model
 xp <- 0:100/100    # x values for prediction
@@ -164,7 +167,7 @@ Xp <- spl.X(xp,xk)
 
 plot(x,target,xlab="Scaled Age of Workers",ylab="Scaled Wage"); 
 lines(xp,Xp%*%coef(mod.4),col="red",lwd=3)
-knots <- c(0.25,0.38,0.53,0.75) 
+knots <- c(0.0725,0.1519,0.3028) 
 abline(v=knots[1], col="green")
 abline(v=knots[2], col="green")
 abline(v=knots[3], col="green")
@@ -325,7 +328,7 @@ CIs show uncertainty from results of identifiability constraints applied to the 
 
 identifiability constraint: the sum of the values at each curve, 
 
-at the observed covariate values, must be 00
+at the observed covariate values, must be 1.00
 
 
 ```{r Thin plate regression, echo=TRUE}
@@ -370,9 +373,9 @@ summary(ct3)
 
 ```
 
-### Here I added the gamma parameter which controls how much each degreee of freedom contributes to GCV score
+### Here I added the gamma parameter which controls how much each degree of freedom contributes to GCV score
 
-Adjusting this can help protect against overfitting the model, without comprimising model fit.
+Adjusting this can help protect against overfitting the model, without compromising model fit.
 
 Increasing gamma causes heavier penalty for each degree of freedom in GCV score
 
