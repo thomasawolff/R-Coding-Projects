@@ -18,7 +18,7 @@ library(mgcv)
 data(brain)
 ```
 
-##  Removing outliers from the medFPQ faeture and modeling with Gaussian model
+##  Removing outliers from the medFPQ feature and modeling with Gaussian model
 
 The plots indicate the model residuals are not Gaussian and that some transformation needs to occur.
 

@@ -46,7 +46,7 @@ petal_aov <- aov(Petal.Width ~ Species, data = iris)
 summary(petal_aov)
 ```
 For ANOVA testing the samples must be equal
-Tukey Significance test: taking the ANOVA and analyzing each factor seperately
+Tukey Significance test: taking the ANOVA and analyzing each factor separately
 
 ```{r}
 TukeyHSD(sepal_aov)

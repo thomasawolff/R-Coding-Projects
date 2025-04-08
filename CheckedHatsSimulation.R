@@ -236,6 +236,19 @@ utley <- as.numeric(dat$H > 0)
 longest.streak(utley)
 
 
+switches <- function(x) {
+  switchList = list()
+  x <- as.integer((c(0, x, 0) == 0))
+  for (i in 1:(length(x)-1)){
+    if (x[i] != x[i+1]){
+      switchList[i] <- noquote(paste(x[i],x[i+1]))
+    }
+  }
+  return(length(unlist(noquote(switchList))))
+}
+
+switches(utley)
+
 # So Utley's longest streak in 2006 was 35 games.
 
 ## Writing a Function to Simulate Hitting Data
@@ -251,33 +264,21 @@ random.streak = function(y) {
   # first, randomly permute y and store in mixed.up.y
   mixed.up.y = sample(y)
   # then find longest streak of 1's in vector mixed.up.y
-  longest.streak(mixed.up.y)
+  return(switches(mixed.up.y))
 }
+
+longest.streak(mixed.up.y)
 
 # replicate random.streak 100000 times, store in L
-L = replicate(100000, random.streak(utley))
+L = replicate(10000, random.streak(utley))
 # tabulate values in L and plot
-plot(table(L))
+hist(L)
 # superimpose line for 2006 season
-abline(v=35, lwd=3)
+abline(v=62, lwd=3, col="blue")
 
-text(37, 10000, "Utley")
+text(62,"Utley")
 
 
-
-switch <- function(x) {
-  switchList = list()
-  h <- unlist(dat["H"])
-  x <- as.integer((c(0, h, 0) == 0))
-  for (i in 1:(length(x)-1)){
-      if (x[i] != x[i+1]){
-        switchList[i] <- noquote(paste(x[i],x[i+1]))
-      }
-  }
-  return(unlist(noquote(switchList)))
-}
-
-switch(v)
 
 
 
