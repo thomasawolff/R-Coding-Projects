@@ -1,0 +1,155 @@
+---
+title: "Nonlinear Regression"
+author: "Thomas Wolff"
+date: "2024-05-23"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+library(ISLR)
+attach(Wage)
+
+```
+
+## R Markdown
+
+Polynomial regression: Poly method creates orthogonal polynomials, regression with uncorrelated predictors
+
+```{r cars}
+fit <- lm(wage~poly(age,4),data=Wage)
+summary(fit)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r fig.width=7, fig.height=6}
+
+agelims=range(age) # creating a grid of range age
+age.grid=seq(from=agelims[1], to=agelims[2]) # creating a range of ages from beginning of age range to end (18 to 80)
+preds=predict(fit,newdata=list(age=age.grid),se=TRUE)
+# cbind: binding together columns to make a matrix
+se.bands=cbind(preds$fit+2*preds$se,preds$fit-2*preds$se) # making +- 2 standard error bands with the fitted function
+plot(age,wage,col="darkgrey") # plotting the data
+lines(age.grid,preds$fit,lwd=2,col="blue") # plotting the fitted function
+matlines(age.grid,se.bands,col="red",lty=2) # the standard error bands
+
+```
+
+Splines: more flexible than polynomials. Spline is a cubic polynomial (bs), with discontinuity in the 3rd derivative. They are constrained to be continuous at the knots (vertical dashed lines).
+
+```{r}
+library(splines)
+fit <- lm(wage~bs(age,knots=c(25,40,60)),data=Wage)
+```
+
+
+
+```{r fig.width=7, fig.height=6}
+plot(age,wage,col="darkgrey")
+lines(age.grid,predict(fit,list(age=age.grid)),col="darkgreen",lwd=2) # fitting the model to data
+abline(v=c(25,40,60),lty=2,col="darkgreen") # vertical lines at knots
+```
+
+```{r}
+uswages = filter(uswages, wage<4000)
+```
+
+
+Polynomial Regression
+```{r fig.width=9, fig.height=6}
+library(splines)
+library(faraway)
+library(ggplot2)
+library(dplyr)
+
+g2 <- lm(wage~poly(exper, 2), data = uswages)
+g4 <- lm(wage~poly(exper, 4), data = uswages)
+uswagesPoly = mutate(uswages, degree2 = fitted(g2), degree4 = fitted(g4))
+ggplot(uswagesPoly, aes(exper, wage)) +
+  geom_point(col = "slategrey")+
+  labs(x = "Experience in year", y = "Weekly wage")+
+  geom_line(aes(exper, degree2, color = "2")) +
+  geom_line(aes(exper, degree4, color = "4")) +
+  scale_color_manual(values = c('2' = 'darkblue',
+                                '4' = 'red')) +
+  labs(color = 'Polynomial degree')+
+  ggtitle("Polynomial Regression models")
+
+
+```
+
+
+Cubic Regression Splines
+
+```{r}
+quantiles <- quantile(uswages$exper,c(.25,.50,.75))
+```
+
+```{r fig.width=9, fig.height=6}
+
+cubic_spline <- lm(wage~bs(exper, knots = quantiles), data=uswages)
+uswages <- mutate(uswages, smooth = fitted(cubic_spline))
+ggplot(uswages, aes(exper, wage)) +
+  labs(x = "Experience in year", y = "Weekly wage") +
+  geom_point(col = "slategrey") +
+  geom_line(aes(exper, smooth), col = "red") +
+  geom_vline(xintercept = quantiles, col = "green") +
+  ggtitle("Cubic regression spline model: quantiles as knots")
+
+```
+```{r}
+summary(cubic_spline)
+```
+
+
+
+```{r fig.width=9, fig.height=6}
+
+knot_loc = c(15,30,45)
+
+cubic_spline2 <- lm(wage~bs(exper, knots = knot_loc), data=uswages)
+uswages <- mutate(uswages, smooth = fitted(cubic_spline2))
+ggplot(uswages, aes(exper, wage)) +
+  labs(x = "Experience in year", y = "Weekly wage") +
+  geom_point(col = "slategrey") +
+  geom_line(aes(exper, smooth), col = "red") +
+  geom_vline(xintercept = knot_loc, col = "green") +
+  ggtitle("Cubic regression spline model: evenly spaced knots")
+
+```
+
+
+
+
+```{r}
+summary(cubic_spline2)
+```
+
+
+```{r}
+library(knitr)
+
+mse <- function(model) {
+  rmse <- sqrt(mean(model$residual^2))
+  round(rmse,3)
+}
+
+mse_poly1 <- mse(g2)
+mse_poly2 <- mse(g4)
+mse_cubic1 <- mse(cubic_spline)
+mse_cubic2 <- mse(cubic_spline2)
+
+model_name <- c("Polynomial with degree 2","Polynomial with degree 4","Cubic Spline Quartiles","Cubic Spline Intervals")
+mses <- c(mse_poly1,mse_poly2,mse_cubic1,mse_cubic2)
+mse_table <- cbind(model_name, mses)
+colnames(mse_table) = c("Models","RMSE")
+kable(mse_table, caption = "Mean squared errors for different models", digits = 3, table.attr = "class=\"striped\"", "html")
+
+```
+
+
+
+
